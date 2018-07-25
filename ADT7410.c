@@ -7,7 +7,7 @@
 #include <linux/i2c-dev.h>
 #include <stdint.h>
 
-int main(int argc, char *argv[])
+int main()
 {
     int file;
     int adapter_nr = 1;
@@ -27,50 +27,41 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-/*
-    if (ioctl(file, I2C_RDWR, 1) < 0) {
-        perror("Cannot set RDWR");
-        close(file);
-        return 1;
-    }
-*/
-
     uint8_t reg = 0;
     char buf[256];
     ssize_t length;
-    if (write(file, &reg, 1) < 0) {
-        perror("Cannot write to i2c device");
-        goto onexit;
-    }
 
-    if ((length = read(file, buf, 4)) < 0) {
-        perror("Cannot read from i2c device");
-        goto onexit;
-    }
+    while(1)
+   {
 
-/*
-    printf("length: %d\n", length);
+        if (write(file, &reg, 1) < 0) {
+            perror("Cannot write to i2c device");
+            close(file);
+            return 0;
+        }
 
-    {
+        if ((length = read(file, buf, 4)) < 0) {
+            perror("Cannot read from i2c device");
+            close(file);
+            return 0;
+        }
+
+        printf("length: %d\n", length);
+
         ssize_t i;
         for (i = 0; i < length; i++) {
             printf("[%02x] %02x\n", i, buf[i]);
         }
+
+        if ((buf[2] & 0x80) == 0) {
+            fprintf(stderr, "Not ready.\n");
+            close(file);
+            return 0;
+        }
+        int value = (buf[0] << 8) | buf[1];
+        printf("%lf\n", ((double)value)/16/8);
+	sleep(1);
     }
-*/
-    if ((buf[2] & 0x80) == 0) {
-        fprintf(stderr, "Not ready.\n");
-        goto onexit;
-    }
-    int value = (buf[0] << 8) | buf[1];
-    printf("%lf\n", ((double)value)/16/8);
-    
 
-  onexit:    
-    close(file);
-
-    (void)argc;
-    (void)argv;
-
-    return 0;
+return 0;
 }
